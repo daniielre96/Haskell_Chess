@@ -190,6 +190,11 @@ movimentsPossiblesPeo casella = case validInTheBoard (fst(posicio casella)) (snd
                     then [((fst(posicio casella)+1), snd(posicio casella))] ++ [((fst(posicio casella)+2), snd(posicio casella))] 
                     else [((fst(posicio casella)+1), snd(posicio casella))]
 
+esBlanca :: Peca -> Bool
+esBlanca peca = peca == (Peca Blanc Peo) || peca == (Peca Blanc Torre) || peca == (Peca Blanc Cavall) || peca == (Peca Blanc Alfil) || peca == (Peca Blanc Dama) || peca == (Peca Blanc Rei)
+
+esNegre :: Peca -> Bool
+esNegre peca = peca == (Peca Negre Peo) || peca == (Peca Negre Torre) || peca == (Peca Negre Cavall) || peca == (Peca Negre Alfil) || peca == (Peca Negre Dama) || peca == (Peca Negre Rei)
 
 movimentsPosiblesRei :: Casella -> [Posicio] -> [Posicio]
 movimentsPosiblesRei casella [] = []
@@ -228,10 +233,16 @@ existeixPosicio (x:xs) pos = if((posicio x) == pos) then True else existeixPosic
 
 
 jugadaLegal :: Tauler -> Jugada -> Bool
-jugadaLegal tauler jugada = if ((not $ (esMata jugada)) && (not $ (hiHaPeca (posFi jugada) tauler)))
+jugadaLegal tauler jugada = if not (hiHaPeca (posIni jugada) tauler) then False
+                            else if ((not $ (esMata jugada)) && (not $ (hiHaPeca (posFi jugada) tauler))) -- cas fet
                                    then ((posFi jugada) `elem` moviment (pecaJugada jugada) (posIni jugada)) && (esCavall (pecaJugada jugada) || (not (alguEntre tauler (posIni jugada) (posFi jugada))))
-                            else if (esMata jugada) && (hiHaPeca (posFi jugada) tauler)
-                                    then ((posFi jugada) `elem` (moviment (pecaJugada jugada) (posIni jugada))++[posFi jugada]) && (esCavall (pecaJugada jugada) || (not (alguEntre tauler (posIni jugada) (posFi jugada))))
+                            else if (not $ esPeo (pecaJugada jugada)) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada))) -- falta mirar sigui color oposat
+                                    then ((posFi jugada) `elem` (moviment (pecaJugada jugada) (posIni jugada))) && (esCavall (pecaJugada jugada) || (not (alguEntre tauler (posIni jugada) (posFi jugada))))
+                            else if (esPeo (pecaJugada jugada) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada)))) -- si es un peo i mata i mata a una peca contraria
+                                    then
+                                      if (esBlanca (pecaJugada jugada))
+                                        then ((fst(posIni jugada)-1,snd(posIni jugada)-1) == (posFi jugada)) || (( fst(posIni jugada)-1,snd(posIni jugada)+1 ) == (posFi jugada)) 
+                                      else ((fst(posIni jugada)+1,snd(posIni jugada)-1) == (posFi jugada)) || (( fst(posIni jugada)+1,snd(posIni jugada)+1 ) == (posFi jugada))
                             else False
 
 sumaPosicions :: Posicio -> Posicio -> Posicio
@@ -240,11 +251,39 @@ sumaPosicions x y = ((fst(x) + fst(y)) , (snd(x) + snd(y)))
 posaPosicio :: Casella -> Posicio -> Casella
 posaPosicio cas posicio = Casella{peca = peca cas, posicio = posicio}
 
+pecesDunColor :: Tauler -> Color -> Tauler
+pecesDunColor t col = case (col == Blanc) of
+  True -> [cas | cas <- t, esBlanca (peca cas)]
+  False -> [cas | cas <- t, esNegre (peca cas)]
+
+noHiHaAlguEntreRei :: Tauler -> Casella -> Tauler -> Bool
+noHiHaAlguEntreRei _ _ [] = False
+noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True}) && (esCavall(peca x) ||  (not (alguEntre tauler (posicio casellaRei) (posicio x))))) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
 
 splitCaselles :: Int -> [a] -> [[a]]
 splitCaselles _ [] = []
 splitCaselles n xs = as : splitCaselles n bs
   where (as,bs) = splitAt n xs
+
+getPosicio :: Tauler -> Peca -> Posicio
+getPosicio [] _ = (0,0)
+getPosicio (x:t) peca2 = if ((peca x) == peca2) then posicio x else getPosicio t peca2
+
+escac :: Tauler -> Color -> Bool
+escac t col = if (col == Blanc)
+                then noHiHaAlguEntreRei t Casella{peca = (Peca Blanc Rei), posicio = getPosicio t (Peca Blanc Rei)} (pecesDunColor t Negre)
+              else noHiHaAlguEntreRei t Casella{peca = (Peca Negre Rei), posicio = getPosicio t (Peca Negre Rei)} (pecesDunColor t Blanc)
+
+
+--escacMat :: Tauler -> Color -> Bool
+--escacMat t col = if((escac t col) && (not (esPotMoureRei t col)) && (not ()) )
+
+-- potFugirRei -> pot moure normal o moure matant algú
+-- teCoberturaRei -> hi ha alguna peça del meu bàndol que et pot cobrir
+-- esPotMatarPeca -> hi ha alguna peça del meu bàndol que pot matar la peca enemiga
+
+Si (esEscac && (not potFugirRei) && (not teCoberturaRei) && (not esPotMatarPeca))
+
 
 
 tauler = llegirTauler taulerInicial -- Tauler d'inici
@@ -324,12 +363,13 @@ realitzaAccio tauler entrada = case entrada of
                      let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
                      let tauler = taulerAux
                      let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 1)
-                     putStrLn "Jugada valida" >> joc taulerAux
+                     if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux
+                     else putStrLn "Jugada valida" >> joc taulerAux
                   else if ((length (splitOn " " entrada) == 1) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))))
                      then do
                       let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
                       let tauler = taulerAux
-                      putStrLn "Jugada valida" >> joc taulerAux
+                      if (escac taulerAux Blanc || escac taulerAux Negre) then putStrLn "ESCAAAAAAAAAC" >> joc taulerAux else putStrLn "Jugada valida" >> joc taulerAux
                   else putStrLn "Jugada invalida" >> joc tauler
 
               --else if not $ movimentValid  -- si el moviment no es valid
