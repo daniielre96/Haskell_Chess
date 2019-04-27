@@ -148,7 +148,7 @@ alguEnLesPosicions tauler (x:xs) =
 
 alguEntre :: Tauler -> Posicio -> Posicio -> Bool
 alguEntre tauler pos1 pos2
-  | fst(pos1) == fst(pos2) = miraEntreCasellesHoritzontal tauler pos1 pos2 --  "Horitzontal" EL ESPECIALITO QUE SE TIENE QUE MIRAR LA SEGUNDA COORDENADA
+  | fst(pos1) == fst(pos2) = miraEntreCasellesHoritzontal tauler pos1 pos2 --  "Horitzontal" 
   | snd(pos1) == snd(pos2) = miraEntreCasellesVertical tauler pos1 pos2 -- Vertical 
   | abs(fst(pos1)-fst(pos2)) == abs(snd(pos1)-snd(pos2)) = miraEntreCasellesDiagonals tauler pos1 pos2 --"Diagonal"
   | otherwise = error("moviment invalid")
@@ -236,9 +236,9 @@ jugadaLegal :: Tauler -> Jugada -> Bool
 jugadaLegal tauler jugada = if not (hiHaPeca (posIni jugada) tauler) then False
                             else if ((not $ (esMata jugada)) && (not $ (hiHaPeca (posFi jugada) tauler))) -- cas fet
                                    then ((posFi jugada) `elem` moviment (pecaJugada jugada) (posIni jugada)) && (esCavall (pecaJugada jugada) || (not (alguEntre tauler (posIni jugada) (posFi jugada))))
-                            else if (not $ esPeo (pecaJugada jugada)) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada))) -- falta mirar sigui color oposat
+                            else if (not $ esPeo (pecaJugada jugada)) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada))) 
                                     then ((posFi jugada) `elem` (moviment (pecaJugada jugada) (posIni jugada))) && (esCavall (pecaJugada jugada) || (not (alguEntre tauler (posIni jugada) (posFi jugada))))
-                            else if (esPeo (pecaJugada jugada) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada)))) -- si es un peo i mata i mata a una peca contraria
+                            else if (esPeo (pecaJugada jugada) && (esMata jugada) && (hiHaPeca (posFi jugada) tauler) && (esNegre (pecaJugada jugada) /= esNegre (getPeca tauler (posFi jugada))))
                                     then
                                       if (esBlanca (pecaJugada jugada))
                                         then ((fst(posIni jugada)-1,snd(posIni jugada)-1) == (posFi jugada)) || (( fst(posIni jugada)-1,snd(posIni jugada)+1 ) == (posFi jugada)) 
@@ -275,24 +275,75 @@ escac t col = if (col == Blanc)
               else noHiHaAlguEntreRei t Casella{peca = (Peca Negre Rei), posicio = getPosicio t (Peca Negre Rei)} (pecesDunColor t Blanc)
 
 
---escacMat :: Tauler -> Color -> Bool
---escacMat t col = if((escac t col) && (not (esPotMoureRei t col)) && (not ()) )
+
 
 -- (FET!!!!!!!!!!) potFugirRei -> pot moure normal o moure matant algú, a on es mou tampoc es escac
--- teCoberturaRei -> hi ha alguna peça del meu bàndol que et pot cobrir, aixo no funciona si amenaça un cavall
--- esPotMatarPeca -> hi ha alguna peça del meu bàndol que pot matar la peca enemiga
+-- (FET!!!!!!!!!!) teCoberturaRei -> hi ha alguna peça del meu bàndol que et pot cobrir, aixo no funciona si amenaça un cavall
+-- (FET!!!!!!!!!!) esPotMatarPeca -> hi ha alguna peça del meu bàndol que pot matar la peca enemiga
 
---Si (esEscac && (not potFugirRei) && (not teCoberturaRei) && (not esPotMatarPeca))
+escacMat :: Tauler -> Color -> Peca -> Bool
+escacMat tauler color pecaQueFaEscac = (not (potFugirRei tauler color)) && (not (teCoberturaRei tauler pecaQueFaEscac color)) && (not(esPotMatarPecaSenseEscac tauler pecaQueFaEscac (pecesDunColor tauler color)))
+
+
+teCoberturaRei :: Tauler -> Peca -> Color -> Bool
+teCoberturaRei tauler pecaQueFaEscac color = if (esCavall pecaQueFaEscac)
+                                             then False
+                                             else existeixMovimentQueEmSalvi tauler (generaPosicionsEntre tauler (getPosicio tauler (Peca color Rei)) (getPosicio tauler pecaQueFaEscac)) (pecesDunColor tauler color)
+
+
+existeixMovimentQueEmSalvi :: Tauler -> [Posicio] -> Tauler -> Bool
+existeixMovimentQueEmSalvi _ [] _ = False
+existeixMovimentQueEmSalvi tauler (x:posicionsEntre) pecesMeves = if (hihaUnaPecaMevaQuePotAnar tauler x pecesMeves)
+                                                                  then True
+                                                                  else existeixMovimentQueEmSalvi tauler posicionsEntre pecesMeves
+
+hihaUnaPecaMevaQuePotAnar :: Tauler -> Posicio -> Tauler -> Bool
+hihaUnaPecaMevaQuePotAnar _ _ [] = False
+hihaUnaPecaMevaQuePotAnar tauler posEntre (x:pecesMeves) = if (jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = posEntre ,esMata = False})
+                                                           then True 
+                                                           else hihaUnaPecaMevaQuePotAnar tauler posEntre pecesMeves
+
+generaPosicionsEntre :: Tauler -> Posicio -> Posicio -> [Posicio]
+generaPosicionsEntre tauler pos1 pos2
+  | fst(pos1) == fst(pos2) = retornaCasellesHoritzontal tauler pos1 pos2 --  "Horitzontal" 
+  | snd(pos1) == snd(pos2) = retornaCasellesVertical tauler pos1 pos2 -- Vertical 
+  | abs(fst(pos1)-fst(pos2)) == abs(snd(pos1)-snd(pos2)) = retornaCasellesDiagonals tauler pos1 pos2 --"Diagonal"
+  | otherwise = []
+
+retornaCasellesDiagonals :: Tauler -> Posicio -> Posicio -> [Posicio]
+retornaCasellesDiagonals t pos1 pos2
+  | (fst(pos2) > fst(pos1)) && (snd(pos2) > snd(pos1)) = [posicions | posicions <- (moviment (Peca Negre Alfil) pos1), ((fst(posicions)) > (fst(pos1))) && ((snd(posicions)) > (snd(pos1))), (fst(posicions) /= fst(pos2)) && (snd(pos2) /= snd(posicions)), fst(posicions) < fst(pos2) && snd(posicions) < snd(pos2)]
+  | (fst(pos1) > fst(pos2)) && (snd(pos1) > snd(pos2)) = [posicions | posicions <- (moviment (Peca Negre Alfil) pos1), ((fst(posicions)) < (fst(pos1))) && ((snd(posicions)) < (snd(pos1))), (fst(posicions) /= fst(pos2)) && (snd(pos2) /= snd(posicions)), fst(posicions) > fst(pos2) && snd(posicions) > snd(pos2)]
+  | (fst(pos2) < fst(pos1)) && (snd(pos2) > snd(pos1)) = [posicions | posicions <- (moviment (Peca Negre Alfil) pos1), ((fst(posicions)) < (fst(pos1))) && ((snd(posicions)) > (snd(pos1))), (fst(posicions) /= fst(pos2)) && (snd(pos2) /= snd(posicions)), fst(posicions) > fst(pos2) && snd(posicions) < snd(pos2)]
+  | (fst(pos2) > fst(pos1)) && (snd(pos2) < snd(pos1)) = [posicions | posicions <- (moviment (Peca Negre Alfil) pos1), ((fst(posicions)) > (fst(pos1))) && ((snd(posicions)) < (snd(pos1))), (fst(posicions) /= fst(pos2)) && (snd(pos2) /= snd(posicions)), fst(posicions) < fst(pos2) && snd(posicions) > snd(pos2)]
+  | otherwise = []
+
+retornaCasellesVertical:: Tauler -> Posicio -> Posicio -> [Posicio]
+retornaCasellesVertical t pos1 pos2 = [(x,y) |  x <- [fst(posicio1)+1..fst(posicio2)-1], y <- [snd(posicio1)], x < fst(posicio2)]
+  where
+    posicio1 = if (fst(pos1) > fst(pos2)) then pos2 else pos1
+    posicio2 = if (fst(pos1) > fst(pos2)) then pos1 else pos2
+
+
+retornaCasellesHoritzontal :: Tauler -> Posicio -> Posicio -> [Posicio]
+retornaCasellesHoritzontal t pos1 pos2 = [(y,x) |  x <- [snd(posicio1)+1..snd(posicio2)-1], y <- [fst(posicio1)], y < snd(posicio2)]
+  where
+    posicio1 = if (snd(pos1) > snd(pos2)) then pos2 else pos1
+    posicio2 = if (snd(pos1) > snd(pos2)) then pos1 else pos2
 
 
 
 
---potFugirRei tauler color = (esPotMoureRei tauler (moviment (Peca color Rei) posicioDeLaPeca) color) || (elReiPotMatar tauler (moviment (Peca color Rei) posicioDeLaPeca) color)
-
+esPotMatarPecaSenseEscac :: Tauler -> Peca -> Tauler -> Bool
+esPotMatarPecaSenseEscac _ _ [] = False
+esPotMatarPecaSenseEscac tauler pecaQueFaEscac (x:pecesDunColor) = if jugadaLegal tauler (Jugada{pecaJugada = peca x, posIni = posicio x, posFi = (getPosicio tauler pecaQueFaEscac), esMata = True}) && not(escac (mourePeca tauler Jugada{pecaJugada = peca x, posIni = posicio x, posFi = (getPosicio tauler pecaQueFaEscac), esMata = True}) color)
+                                                                   then True
+                                                                   else esPotMatarPecaSenseEscac tauler pecaQueFaEscac pecesDunColor
+                                                                     where color = if(esNegre (peca x)) then Negre else Blanc
 
 
 potFugirRei :: Tauler -> Color -> Bool
-potFugirRei tauler color = (elReiPotMatar tauler (moviment (Peca color Rei) posicioDeLaPeca) color)
+potFugirRei tauler color = (esPotMoureRei tauler (moviment (Peca color Rei) posicioDeLaPeca) color) || (elReiPotMatar tauler (moviment (Peca color Rei) posicioDeLaPeca) color)
   where posicioDeLaPeca = getPosicio tauler (Peca color Rei)
 
 esPotMoureRei :: Tauler -> [Posicio] -> Color -> Bool
@@ -401,12 +452,3 @@ realitzaAccio tauler entrada = case entrada of
                       if (escac taulerAux Blanc || escac taulerAux Negre) then putStrLn "ESCAAAAAAAAAC" >> joc taulerAux else putStrLn "Jugada valida" >> joc taulerAux
                   else putStrLn "Jugada invalida" >> joc tauler
 
-              --else if not $ movimentValid  -- si el moviment no es valid
-              --then putStrLn "Moviment il·legal" >> joc tauler
-              --else -- realitzar la jugada 
-
---updateMatrix :: Tauler -> (Int, Int) -> Tauler
---updateMatrix t (x,y) =
-  --take x t ++
-  --[take y (t !! x) ++ [(Casella {peca = peca (t !! x !! y), posicio = (x,y)})] ++ drop (y + 1) (t !! x)] ++
-  --drop (x + 1) t
