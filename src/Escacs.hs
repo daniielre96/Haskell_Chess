@@ -282,7 +282,7 @@ escac t col = if (col == Blanc)
 -- (FET!!!!!!!!!!) esPotMatarPeca -> hi ha alguna peça del meu bàndol que pot matar la peca enemiga
 
 escacMat :: Tauler -> Color -> Peca -> Bool
-escacMat tauler color pecaQueFaEscac = (not (potFugirRei tauler color)) && (not (teCoberturaRei tauler pecaQueFaEscac color)) && (not(esPotMatarPecaSenseEscac tauler pecaQueFaEscac (pecesDunColor tauler color)))
+escacMat tauler color pecaQueFaEscac = (escac tauler color) && (not (potFugirRei tauler color)) && (not (teCoberturaRei tauler pecaQueFaEscac color)) && (not(esPotMatarPecaSenseEscac tauler pecaQueFaEscac (pecesDunColor tauler color)))
 
 
 teCoberturaRei :: Tauler -> Peca -> Color -> Bool
@@ -442,13 +442,20 @@ realitzaAccio tauler entrada = case entrada of
                          let tauler = taulerAux
                          let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 1)
                          if(escac taulerAux Negre) then putStrLn "Jugada invalida(auto-escac-negres)" >> joc taulerJugadaAnterior
+                         else if ( ('+' == (((splitOn " " entrada) !! 1) !! (length ((splitOn " " entrada) !! 1)-1) )) && ('+' == (((splitOn " " entrada) !! 1) !! (length ((splitOn " " entrada) !! 1)-2) )))                         
+                         then if(escacMat taulerAux Blanc (convertCharToPeca (((splitOn " " entrada) !! 1) !! 0)))
+                              then putStrLn "Fi de partida, negres guanyen!!!"
+                              else do
+                              putStrLn "Jugada invalida (escac invalid)" >> joc taulerJugadaAnterior
                          else do
                              if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux
                              else putStrLn "Jugada valida" >> joc taulerAux
                   else if ((length (splitOn " " entrada) == 1) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))))
                      then do
                       let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
-                      let tauler = taulerAux
-                      if (escac taulerAux Blanc || escac taulerAux Negre) then putStrLn "ESCAAAAAAAAAC" >> joc taulerAux else putStrLn "Jugada valida" >> joc taulerAux
+                      if(escacMat taulerAux Negre (convertCharToPeca (((splitOn " " entrada) !! 0) !! 0)))
+                      then putStrLn "Fi de partida, blanques guanyen!!!"
+                      else do
+                        putStrLn "Jugada invalida (escac invalid)" >> joc tauler
                   else putStrLn "Jugada invalida" >> joc tauler
 
