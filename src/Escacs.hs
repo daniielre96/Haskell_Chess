@@ -278,13 +278,37 @@ escac t col = if (col == Blanc)
 --escacMat :: Tauler -> Color -> Bool
 --escacMat t col = if((escac t col) && (not (esPotMoureRei t col)) && (not ()) )
 
--- potFugirRei -> pot moure normal o moure matant algú
--- teCoberturaRei -> hi ha alguna peça del meu bàndol que et pot cobrir
+-- (FET!!!!!!!!!!) potFugirRei -> pot moure normal o moure matant algú, a on es mou tampoc es escac
+-- teCoberturaRei -> hi ha alguna peça del meu bàndol que et pot cobrir, aixo no funciona si amenaça un cavall
 -- esPotMatarPeca -> hi ha alguna peça del meu bàndol que pot matar la peca enemiga
 
-Si (esEscac && (not potFugirRei) && (not teCoberturaRei) && (not esPotMatarPeca))
+--Si (esEscac && (not potFugirRei) && (not teCoberturaRei) && (not esPotMatarPeca))
 
 
+
+
+--potFugirRei tauler color = (esPotMoureRei tauler (moviment (Peca color Rei) posicioDeLaPeca) color) || (elReiPotMatar tauler (moviment (Peca color Rei) posicioDeLaPeca) color)
+
+
+
+potFugirRei :: Tauler -> Color -> Bool
+potFugirRei tauler color = (elReiPotMatar tauler (moviment (Peca color Rei) posicioDeLaPeca) color)
+  where posicioDeLaPeca = getPosicio tauler (Peca color Rei)
+
+esPotMoureRei :: Tauler -> [Posicio] -> Color -> Bool
+esPotMoureRei _ [] _ = False
+esPotMoureRei tauler (x:movimentsPossibles) color = if((not (hiHaPeca x tauler)) && not(escac (mourePeca tauler Jugada{pecaJugada = (Peca color Rei), posIni = getPosicio tauler (Peca color Rei), posFi = x, esMata = False}) color))
+                                                    then True
+                                                    else esPotMoureRei tauler movimentsPossibles color
+
+elReiPotMatar :: Tauler -> [Posicio] -> Color -> Bool
+elReiPotMatar _ [] _ = False
+elReiPotMatar tauler (x:movimentsPossibles) color = if((hiHaPeca x tauler) && (posXesColorContrari tauler x color) && not(escac (mourePeca tauler Jugada{pecaJugada = (Peca color Rei), posIni = getPosicio tauler (Peca color Rei), posFi = x, esMata = True}) color))
+                                                    then True
+                                                    else elReiPotMatar tauler movimentsPossibles color
+
+posXesColorContrari :: Tauler -> Posicio -> Color -> Bool
+posXesColorContrari tauler posicio color = (esNegre (getPeca tauler posicio) && color == Blanc) ||  (esBlanca (getPeca tauler posicio) && color == Negre)
 
 tauler = llegirTauler taulerInicial -- Tauler d'inici
 
@@ -361,10 +385,15 @@ realitzaAccio tauler entrada = case entrada of
                   if (((length (splitOn " " entrada)) == 2) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 1))))
                     then do 
                      let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
-                     let tauler = taulerAux
-                     let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 1)
-                     if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux
-                     else putStrLn "Jugada valida" >> joc taulerAux
+                     if(escac taulerAux Blanc) then putStrLn "Jugada invalida(auto-escac-blanques)" >> joc tauler
+                     else do
+                         let taulerJugadaAnterior = tauler
+                         let tauler = taulerAux
+                         let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 1)
+                         if(escac taulerAux Negre) then putStrLn "Jugada invalida(auto-escac-negres)" >> joc taulerJugadaAnterior
+                         else do
+                             if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux
+                             else putStrLn "Jugada valida" >> joc taulerAux
                   else if ((length (splitOn " " entrada) == 1) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))))
                      then do
                       let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
