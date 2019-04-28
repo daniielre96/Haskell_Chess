@@ -169,7 +169,7 @@ miraEntreCasellesVertical t pos1 pos2 = alguEnLesPosicions t [(x,y) |  x <- [fst
 
 
 miraEntreCasellesHoritzontal :: Tauler -> Posicio -> Posicio -> Bool
-miraEntreCasellesHoritzontal t pos1 pos2 = alguEnLesPosicions t [(y,x) |  x <- [snd(posicio1)+1..snd(posicio2)-1], y <- [fst(posicio1)], y < snd(posicio2)]
+miraEntreCasellesHoritzontal t pos1 pos2 = alguEnLesPosicions t [(y,x) |  x <- [snd(posicio1)+1..snd(posicio2)-1], y <- [fst(posicio1)], x < snd(posicio2)]
   where
     posicio1 = if (snd(pos1) > snd(pos2)) then pos2 else pos1
     posicio2 = if (snd(pos1) > snd(pos2)) then pos1 else pos2
@@ -258,7 +258,11 @@ pecesDunColor t col = case (col == Blanc) of
 
 noHiHaAlguEntreRei :: Tauler -> Casella -> Tauler -> Bool
 noHiHaAlguEntreRei _ _ [] = False
-noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True}) && (esCavall(peca x) ||  (not (alguEntre tauler (posicio casellaRei) (posicio x))))) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True})) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+
+
+--noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True}) && (esCavall(peca x) ||  (not (alguEntre tauler (posicio casellaRei) (posicio x))))) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+
 
 splitCaselles :: Int -> [a] -> [[a]]
 splitCaselles _ [] = []
@@ -431,7 +435,18 @@ realitzaAccio _ "sortir" = putStrLn "Adeu gràcies per jugar"
 realitzaAccio tauler entrada = case entrada of
   "" -> putStrLn "Entrada invalida" >> joc tauler
   otherwise -> if not $ validInput entrada -- si la entrada no es correcte
-                  then putStrLn "Entrada invalida" >> joc tauler
+               then putStrLn "Entrada invalida" >> joc tauler
+               else if (((splitOn " " entrada) !! 0) !! 3 == 'x') && (((splitOn " " entrada) !! 1)  !! 3 == 'x')
+                    then do
+                    if (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0)))
+                       then do
+                             let taulerAmbBlanquesMatenPeca = llegirMoviment tauler ((splitOn " " entrada) !! 0)
+                             if (jugadaLegal taulerAmbBlanquesMatenPeca (crearJugada ((splitOn " " entrada) !! 1)))
+                             then do
+                                   let tauler = llegirMoviment taulerAmbBlanquesMatenPeca ((splitOn " " entrada) !! 1)
+                                   putStrLn "Jugada valida" >> joc tauler
+                             else putStrLn "Jugada invalida" >> joc tauler
+                    else putStrLn "Jugada invalida" >> joc tauler
                else
                   if (((length (splitOn " " entrada)) == 2) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 1))))
                     then do 
