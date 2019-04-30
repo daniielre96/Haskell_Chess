@@ -169,7 +169,7 @@ miraEntreCasellesVertical t pos1 pos2 = alguEnLesPosicions t [(x,y) |  x <- [fst
 
 
 miraEntreCasellesHoritzontal :: Tauler -> Posicio -> Posicio -> Bool
-miraEntreCasellesHoritzontal t pos1 pos2 = alguEnLesPosicions t [(y,x) |  x <- [snd(posicio1)+1..snd(posicio2)-1], y <- [fst(posicio1)], y < snd(posicio2)]
+miraEntreCasellesHoritzontal t pos1 pos2 = alguEnLesPosicions t [(y,x) |  x <- [snd(posicio1)+1..snd(posicio2)-1], y <- [fst(posicio1)], x < snd(posicio2)]
   where
     posicio1 = if (snd(pos1) > snd(pos2)) then pos2 else pos1
     posicio2 = if (snd(pos1) > snd(pos2)) then pos1 else pos2
@@ -258,7 +258,11 @@ pecesDunColor t col = case (col == Blanc) of
 
 noHiHaAlguEntreRei :: Tauler -> Casella -> Tauler -> Bool
 noHiHaAlguEntreRei _ _ [] = False
-noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True}) && (esCavall(peca x) ||  (not (alguEntre tauler (posicio casellaRei) (posicio x))))) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True})) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+
+
+--noHiHaAlguEntreRei tauler casellaRei (x:pecesAltreColor) = if((jugadaLegal tauler Jugada{pecaJugada = (peca x), posIni = (posicio x), posFi = (posicio casellaRei), esMata = True}) && (esCavall(peca x) ||  (not (alguEntre tauler (posicio casellaRei) (posicio x))))) then True else noHiHaAlguEntreRei tauler casellaRei pecesAltreColor
+
 
 splitCaselles :: Int -> [a] -> [[a]]
 splitCaselles _ [] = []
@@ -413,49 +417,71 @@ validInput str = if ((length (splitOn " " str) /= 1) && (length (splitOn " " str
                  else True
 
 main :: IO()
-main = joc taulerFinal
+main = do
+       putStrLn "Introdueix el nom del fitxer, si us plau."
+       fitxer <- getLine
+       s <- readFile fitxer
+       let ls = lines s
+       joc taulerFinal ls 0
 
-joc :: Tauler -> IO()
-joc tauler = do
+
+joc :: Tauler -> [String] -> Int -> IO()
+joc tauler lineas numLinea = do
   putStrLn "========"
   mostrarTaulerActual tauler
   putStrLn "========"
   putStrLn "abcdefgh"
   putStr "Entrada> "
-  hFlush stdout
-  entrada <- getLine
-  realitzaAccio tauler entrada
+  let entrada = lineas !! numLinea
+  realitzaAccio tauler lineas entrada numLinea
 
-realitzaAccio :: Tauler -> String -> IO()
-realitzaAccio _ "sortir" = putStrLn "Adeu gràcies per jugar"
-realitzaAccio tauler entrada = case entrada of
-  "" -> putStrLn "Entrada invalida" >> joc tauler
+realitzaAccio :: Tauler -> [String] -> String -> Int -> IO()
+realitzaAccio _ _ "sortir" _ = putStrLn "Adeu gràcies per jugar"
+realitzaAccio tauler lineas entrada numLinea = case entrada of
+  "" -> putStrLn "Entrada invalida" >> joc tauler lineas (numLinea + 1)
   otherwise -> if not $ validInput entrada -- si la entrada no es correcte
-                  then putStrLn "Entrada invalida" >> joc tauler
+               then putStrLn "Entrada invalida" >> joc tauler lineas (numLinea + 1)
+                  else if ((length (splitOn " " entrada) == 1) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))))
+                     then do
+                          let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
+                          if(escacMat taulerAux Negre (convertCharToPeca (((splitOn " " entrada) !! 0) !! 0)))
+                          then do
+                           putStrLn "Jugada valida"
+                           mostrarTaulerActual taulerAux
+                           putStrLn "Fi de partida, blanques guanyen!!!"
+                          else do
+                           putStrLn "Jugada invalida (escac invalid)" >> joc tauler lineas (numLinea + 1)
+               else if (((splitOn " " entrada) !! 0) !! 3 == 'x') && (((splitOn " " entrada) !! 1)  !! 3 == 'x')
+                    then do
+                    if (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0)))
+                       then do
+                             let taulerAmbBlanquesMatenPeca = llegirMoviment tauler ((splitOn " " entrada) !! 0)
+                             if (jugadaLegal taulerAmbBlanquesMatenPeca (crearJugada ((splitOn " " entrada) !! 1)))
+                             then do
+                                   let tauler = llegirMoviment taulerAmbBlanquesMatenPeca ((splitOn " " entrada) !! 1)
+                                   putStrLn "Jugada valida" >> joc tauler lineas (numLinea + 1)
+                             else putStrLn "Jugada invalida" >> joc tauler lineas (numLinea + 1)
+                    else putStrLn "Jugada invalida" >> joc tauler lineas (numLinea + 1)
                else
                   if (((length (splitOn " " entrada)) == 2) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 1))))
                     then do 
                      let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
-                     if(escac taulerAux Blanc) then putStrLn "Jugada invalida(auto-escac-blanques)" >> joc tauler
+                     if(escac taulerAux Blanc) then putStrLn "Jugada invalida(auto-escac-blanques)" >> joc tauler lineas (numLinea + 1)
                      else do
                          let taulerJugadaAnterior = tauler
                          let tauler = taulerAux
                          let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 1)
-                         if(escac taulerAux Negre) then putStrLn "Jugada invalida(auto-escac-negres)" >> joc taulerJugadaAnterior
+                         if(escac taulerAux Negre) then putStrLn "Jugada invalida(auto-escac-negres)" >> joc taulerJugadaAnterior lineas (numLinea + 1)
                          else if ( ('+' == (((splitOn " " entrada) !! 1) !! (length ((splitOn " " entrada) !! 1)-1) )) && ('+' == (((splitOn " " entrada) !! 1) !! (length ((splitOn " " entrada) !! 1)-2) )))                         
                          then if(escacMat taulerAux Blanc (convertCharToPeca (((splitOn " " entrada) !! 1) !! 0)))
-                              then putStrLn "Fi de partida, negres guanyen!!!"
+                              then do
+                                putStrLn "Jugada valida"
+                                mostrarTaulerActual taulerAux
+                                putStrLn "Fi de partida, negres guanyen!!!"
                               else do
-                              putStrLn "Jugada invalida (escac invalid)" >> joc taulerJugadaAnterior
+                              putStrLn "Jugada invalida (escac invalid)" >> joc taulerJugadaAnterior lineas (numLinea + 1)
                          else do
-                             if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux
-                             else putStrLn "Jugada valida" >> joc taulerAux
-                  else if ((length (splitOn " " entrada) == 1) && (jugadaLegal tauler (crearJugada ((splitOn " " entrada) !! 0))))
-                     then do
-                      let taulerAux = llegirMoviment tauler ((splitOn " " entrada) !! 0)
-                      if(escacMat taulerAux Negre (convertCharToPeca (((splitOn " " entrada) !! 0) !! 0)))
-                      then putStrLn "Fi de partida, blanques guanyen!!!"
-                      else do
-                        putStrLn "Jugada invalida (escac invalid)" >> joc tauler
-                  else putStrLn "Jugada invalida" >> joc tauler
+                             if((('+' `elem` ((splitOn " " entrada) !! 0)) && (not (escac taulerAux Negre))) || (('+' `elem` ((splitOn " " entrada) !! 1)) && (not (escac taulerAux Blanc)))) then putStrLn "Escac NO valid" >> joc taulerAux lineas (numLinea + 1)
+                             else putStrLn "Jugada valida" >> joc taulerAux lineas (numLinea + 1)
+                  else putStrLn "Jugada invalida" >> joc tauler lineas (numLinea + 1)
 
