@@ -1,3 +1,7 @@
+-- HASKELL CHESS ---------------------------
+-- Created by Daniel Re & Luis Leon on 2019
+-- Copyright © 2019 Daniel Re & Luis Leon. All rights reserved.
+
 -- Llibreries necessaries ---------------------------
 
 import Data.List
